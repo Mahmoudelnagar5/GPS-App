@@ -42,7 +42,9 @@ class SatelliteInfoWidget extends StatelessWidget {
                 style: TextStyle(color: Colors.grey),
               )
             else
-              ...satellites.take(15).map((sat) => _buildSatelliteRow(sat)),
+              ...satellites
+                  .take(satellites.length)
+                  .map((sat) => _buildSatelliteRow(sat)),
           ],
         ),
       ),

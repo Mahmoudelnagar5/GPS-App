@@ -4,11 +4,12 @@
 
 <img src="https://img.shields.io/badge/Flutter-3.10.1+-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter SDK">
 <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS-green?style=for-the-badge" alt="Platform">
-<img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License">
+<img src="https://img.shields.io/badge/version-1.0.0-blue?style=for-the-badge" alt="Version">
+<img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License">
 
 **A modern Flutter application for tracking GPS satellites and comparing location data**
 
-[Features](#-features) • [Getting Started](#-getting-started) • [Architecture](#-architecture) • [Screenshots](#-screenshots)
+[Features](#-features) • [Getting Started](#-getting-started) • [Architecture](#-architecture) • [Testing](#-testing)
 
 </div>
 
@@ -16,19 +17,41 @@
 
 ## 📖 Overview
 
-GPS Satellite Tracker is a cross-platform mobile application built with Flutter that provides real-time GPS satellite information and location tracking. The app compares offline GNSS (Global Navigation Satellite System) location data with online location services, offering users comprehensive insights into their positioning accuracy and satellite visibility.
+GPS Satellite Tracker is a cross-platform mobile application built with Flutter that provides real-time GPS satellite information and location tracking. The app compares **offline GNSS** (Global Navigation Satellite System) location data with **online location services**, offering users comprehensive insights into their positioning accuracy and satellite visibility.
+
+> **Note**: This app requires a physical device with GPS hardware for full functionality. Emulators may have limited GPS support.
 
 ## ✨ Features
 
 | Feature | Description |
 |---------|-------------|
-| 📍 **Real-time Location Tracking** | Get continuous GPS position updates with high accuracy |
-| 🛰️ **Satellite Information** | View detailed satellite data including PRN, signal strength, elevation, and azimuth |
-| 🔄 **Location Comparison** | Compare GNSS offline location with online location services side-by-side |
-| 📊 **Accuracy Metrics** | Visualize the accuracy difference between location providers |
-| 🔐 **Permission Management** | Graceful handling of location permissions with user-friendly prompts |
-| 🎨 **Modern UI** | Clean Material Design 3 interface with smooth animations |
+| 📍 **Dual Location Tracking** | Simultaneously tracks online (network-based) and offline (GNSS native) locations |
+| 🛰️ **Satellite Information** | View detailed satellite data including PRN, signal strength (CN0), elevation, and azimuth |
+| 🔄 **Real-time Comparison** | Compare GNSS offline location with online location services side-by-side with live metrics |
+| 📊 **Accuracy Metrics** | Visualize horizontal distance difference, altitude variance, and accuracy comparison |
+| 🧭 **Multi-Constellation Support** | Track satellites from GPS, GLONASS, and BeiDou constellations |
+| 🔐 **Permission Management** | Graceful handling of location permissions with user-friendly prompts and retry options |
+| 🎨 **Modern Material 3 UI** | Clean interface with card-based layout, smooth animations, and pull-to-refresh |
 | 📱 **Cross-Platform** | Works seamlessly on both Android and iOS devices |
+| ⚡ **Stream-based Architecture** | Real-time updates using Dart Streams without BLoC/Cubit complexity |
+
+### Satellite Data Details
+
+The app provides comprehensive satellite information:
+
+| Data Point | Description |
+|------------|-------------|
+| **SVID** | Satellite Vehicle ID (unique identifier) |
+| **CN0 (dB-Hz)** | Signal-to-noise ratio - indicates signal quality |
+| **Elevation** | Angle above the horizon (0°-90°) |
+| **Azimuth** | Compass direction from user (0°-360°) |
+| **Used in Fix** | Whether satellite contributes to position calculation |
+| **Ephemeris/Almanac** | Data availability status |
+
+**Signal Quality Indicators:**
+- 🟢 **Strong**: >35 dB-Hz (Excellent for positioning)
+- 🟠 **Medium**: 25-35 dB-Hz (Acceptable)
+- 🔴 **Weak**: <25 dB-Hz (May not be used in fix)
 
 ## 🏗️ Architecture
 
@@ -36,32 +59,59 @@ The project follows a **Feature-First Architecture** with clear separation of co
 
 ```
 lib/
-├── main.dart                          # App entry point
+├── main.dart                          # App entry point & MaterialApp configuration
 └── features/
     └── home/
         ├── data/
         │   ├── models/
-        │   │   ├── gnss_location.dart      # GNSS location model
-        │   │   ├── location_comparison.dart # Comparison logic
+        │   │   ├── gnss_location.dart      # GNSS location model with Haversine distance
+        │   │   ├── location_comparison.dart # Comparison logic & metrics
         │   │   └── satellite_info.dart     # Satellite data model
         │   └── services/
-        │       ├── gnss_service.dart       # Native GNSS communication
-        │       └── online_location_service.dart # Online location provider
+        │       ├── gnss_service.dart       # Native GNSS via Platform Channels
+        │       └── online_location_service.dart # Geolocator-based location
         └── presentation/
             ├── views/
-            │   └── home_screen.dart        # Main screen
+            │   └── home_screen.dart        # Main screen with StreamBuilder
             └── widgets/
                 ├── comparison_widget.dart   # Location comparison UI
-                ├── location_display_widget.dart # Location cards
-                └── satellite_info_widget.dart  # Satellite list view
+                ├── location_display_widget.dart # Dual location cards
+                └── satellite_info_widget.dart  # Satellite list & summary
 ```
 
 ### Key Components
 
-- **GnssService**: Communicates with native platform channels to access raw GNSS data
-- **OnlineLocationService**: Fetches location from online providers
-- **Models**: Type-safe data models for location and satellite information
-- **Widgets**: Reusable UI components following Flutter best practices
+| Component | Description |
+|-----------|-------------|
+| **GnssService** | Communicates with native Android/iOS via `MethodChannel` to access raw GNSS data and satellite status |
+| **OnlineLocationService** | Uses Geolocator package for network-based location with stream-based updates |
+| **GnssLocation Model** | Contains `distanceTo()` method using Haversine formula for accurate distance calculations |
+| **SatelliteInfo Model** | Type-safe representation of satellite data including constellation type and signal quality |
+| **Widgets** | Reusable UI components with `StreamBuilder` for reactive updates |
+
+### Data Flow
+
+```
+┌─────────────────┐    Platform Channel    ┌──────────────────┐
+│   GnssService   │ ◄───────────────────► │  Android/iOS     │
+│  (EventChannel) │                        │  GNSS Callbacks  │
+└────────┬────────┘                        └──────────────────┘
+         │ Stream<GnssLocation>
+         │ Stream<List<SatelliteInfo>>
+         ▼
+┌─────────────────┐    Geolocator API     ┌──────────────────┐
+│ OnlineLocation  │ ◄───────────────────► │  Platform GPS    │
+│    Service      │                        │  (Network)       │
+└────────┬────────┘                        └──────────────────┘
+         │ Stream<Position>
+         ▼
+┌─────────────────────────────────────────┐
+│            HomeScreen (State)           │
+│  - Combines both streams                │
+│  - Updates UI via setState()            │
+│  - Handles permissions & errors         │
+└─────────────────────────────────────────┘
+```
 
 ## 🚀 Getting Started
 
@@ -70,25 +120,27 @@ lib/
 - Flutter SDK 3.10.1 or higher
 - Dart SDK 3.10.1 or higher
 - Android Studio / Xcode (for platform-specific builds)
-- A physical device (GPS features may not work properly on emulators)
+- **Physical device with GPS hardware** (emulators have limited GPS support)
+- Android 7.0+ (API 24+) for full GnssStatus API support
 
-### Installation
+### Quick Start
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/gps_app.git
-   cd gps_app
-   ```
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/gps_app.git
+cd gps_app
 
-2. **Install dependencies**
-   ```bash
-   flutter pub get
-   ```
+# Install dependencies
+flutter pub get
 
-3. **Run the app**
-   ```bash
-   flutter run
-   ```
+# Run on connected device
+flutter run
+```
+
+Or use the included setup script:
+```bash
+setup.bat
+```
 
 ### Platform-Specific Setup
 
@@ -152,8 +204,6 @@ flutter test
 # Run with coverage
 flutter test --coverage
 ```
-
-See [TESTING.md](TESTING.md) for detailed testing documentation.
 
 ## 🤝 Contributing
 

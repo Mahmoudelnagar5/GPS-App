@@ -8,6 +8,7 @@ import '../../data/services/online_location_service.dart';
 import '../widgets/location_display_widget.dart';
 import '../widgets/satellite_info_widget.dart';
 import '../widgets/comparison_widget.dart';
+import 'accelerometer_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
