@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:gps_app/features/tracker/tracker_dashboard.dart';
 import 'features/home/presentation/views/home_screen.dart';
 import 'features/home/presentation/views/accelerometer_screen.dart';
 
@@ -39,7 +38,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const TrackerDashboard(),
+      home: const DashboardScreen(),
     );
   }
 }
